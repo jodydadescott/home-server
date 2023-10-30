@@ -6,7 +6,6 @@ import (
 
 	"github.com/jodydadescott/home-server/types"
 	"github.com/jodydadescott/home-server/util"
-	"go.uber.org/zap"
 )
 
 type Config = types.StaticConfig
@@ -39,7 +38,6 @@ func New(config *Config) []*Client {
 
 		if domain.Domain == "" {
 			domain.Domain = types.DefaultDomain
-
 		}
 
 		clients = append(clients, &Client{domain: domain})
@@ -94,8 +92,6 @@ func (t *Client) GetRecords() (*Records, error) {
 
 		ptrRecordsMap[p.GetKey()] = p
 
-		zap.L().Debug(fmt.Sprintf("Added %s %s %s and %s PTR %s", a.GetKey(), iptype, a.GetValue(), p.GetKey(), p.GetValue()))
-
 		return nil
 	}
 
@@ -133,8 +129,6 @@ func (t *Client) GetRecords() (*Records, error) {
 
 		r.SRC = source + ":static"
 
-		zap.L().Debug(fmt.Sprintf("Added %s %s CNAME %s", r.SRC, r.GetKey(), r.GetValue()))
-
 	}
 
 	for _, p := range t.domain.Records.PtrRecords {
@@ -150,10 +144,8 @@ func (t *Client) GetRecords() (*Records, error) {
 			p.SRC = source + ":static"
 			ptrRecordsMap[p.GetKey()] = p
 
-			zap.L().Debug(fmt.Sprintf("Added %s %s PTR %s", p.SRC, p.GetKey(), p.GetValue()))
 		} else {
 			p.SRC = source + ":static-and-dynamic"
-			zap.L().Debug(fmt.Sprintf("PTR %s already existed with %s; source upted to %s", p.GetKey(), p.GetValue(), p.SRC))
 		}
 	}
 

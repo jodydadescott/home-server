@@ -93,6 +93,18 @@ func New(config *Config) *Server {
 	return c
 }
 
+func (t *Server) GetRecords() *DomainRecords {
+
+	records := &DomainRecords{}
+
+	for _, client := range t.clients {
+		records.ARecords = append(records.ARecords, client.getARecords()...)
+		records.AAAARecords = append(records.AAAARecords, client.getAAAARecords()...)
+	}
+
+	return records
+}
+
 func (t *Server) Run(ctx context.Context) error {
 
 	getARecord := func(name string) *ARecord {
@@ -133,114 +145,6 @@ func (t *Server) Run(ctx context.Context) error {
 			}
 		}
 		return nil
-	}
-
-	handleLocal := func(w dns.ResponseWriter, r *dns.Msg) {
-		m := new(dns.Msg)
-		m.SetReply(r)
-		m.Compress = false
-
-		switch r.Opcode {
-		case dns.OpcodeQuery:
-
-			for _, q := range m.Question {
-
-				switch q.Qtype {
-
-				case dns.TypeA:
-					lookup := getARecord(q.Name)
-					if lookup != nil {
-						record := fmt.Sprintf("%s A %s", q.Name, lookup.GetValue())
-
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
-						}
-
-						rr, err := dns.NewRR(record)
-
-						if err == nil {
-							m.Answer = append(m.Answer, rr)
-						} else {
-							zap.L().Error(err.Error())
-						}
-					} else {
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("fail -> %s has no A record", q.Name))
-						}
-					}
-
-				case dns.TypeAAAA:
-					lookup := getAAAARecord(q.Name)
-					if lookup != nil {
-						record := fmt.Sprintf("%s AAAA %s", q.Name, lookup.GetValue())
-
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
-						}
-
-						rr, err := dns.NewRR(record)
-
-						if err == nil {
-							m.Answer = append(m.Answer, rr)
-						} else {
-							zap.L().Error(err.Error())
-						}
-					} else {
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("fail -> %s has no AAAA record", q.Name))
-						}
-					}
-
-				case dns.TypePTR:
-					lookup := getPTRRecord(q.Name)
-					if lookup != nil {
-						record := fmt.Sprintf("%s PTR %s", q.Name, lookup.GetValue())
-
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
-						}
-
-						rr, err := dns.NewRR(record)
-
-						if err == nil {
-							m.Answer = append(m.Answer, rr)
-						} else {
-							zap.L().Error(err.Error())
-						}
-					} else {
-						if t.trace {
-							zap.L().Debug((fmt.Sprintf("fail -> %s has no PTR record", q.Name)))
-						}
-					}
-
-				case dns.TypeCNAME:
-					lookup := getCNameRecord(q.Name)
-					if lookup != nil {
-						record := fmt.Sprintf("%s CNAME %s", q.Name, lookup.GetValue())
-
-						if t.trace {
-							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
-						}
-
-						rr, err := dns.NewRR(record)
-
-						if err == nil {
-							m.Answer = append(m.Answer, rr)
-						} else {
-							zap.L().Error(err.Error())
-						}
-					} else {
-						if t.trace {
-							zap.L().Debug((fmt.Sprintf("fail -> %s has no CNAME record", q.Name)))
-						}
-					}
-
-				}
-			}
-
-		}
-
-		w.WriteMsg(m)
 	}
 
 	handleRemote := func(w dns.ResponseWriter, r *dns.Msg) {
@@ -289,6 +193,133 @@ func (t *Server) Run(ctx context.Context) error {
 		m.SetReply(r)
 		m.SetRcode(r, dns.RcodeServerFailure)
 		w.WriteMsg(m)
+	}
+
+	handleLocal := func(w dns.ResponseWriter, r *dns.Msg) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		m.Compress = false
+
+		local := false
+
+		switch r.Opcode {
+		case dns.OpcodeQuery:
+
+			for _, q := range m.Question {
+
+				switch q.Qtype {
+
+				case dns.TypeA:
+					lookup := getARecord(q.Name)
+					if lookup != nil {
+						record := fmt.Sprintf("%s A %s", q.Name, lookup.GetValue())
+
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
+						}
+
+						rr, err := dns.NewRR(record)
+
+						if err == nil {
+							m.Answer = append(m.Answer, rr)
+						} else {
+							zap.L().Error(err.Error())
+						}
+
+						local = true
+
+					} else {
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("fail -> %s has no A record", q.Name))
+						}
+					}
+
+				case dns.TypeAAAA:
+					lookup := getAAAARecord(q.Name)
+					if lookup != nil {
+						record := fmt.Sprintf("%s AAAA %s", q.Name, lookup.GetValue())
+
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
+						}
+
+						rr, err := dns.NewRR(record)
+
+						if err == nil {
+							m.Answer = append(m.Answer, rr)
+						} else {
+							zap.L().Error(err.Error())
+						}
+
+						local = true
+
+					} else {
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("fail -> %s has no AAAA record", q.Name))
+						}
+					}
+
+				case dns.TypePTR:
+					lookup := getPTRRecord(q.Name)
+					if lookup != nil {
+						record := fmt.Sprintf("%s PTR %s", q.Name, lookup.GetValue())
+
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
+						}
+
+						rr, err := dns.NewRR(record)
+
+						if err == nil {
+							m.Answer = append(m.Answer, rr)
+						} else {
+							zap.L().Error(err.Error())
+						}
+
+						local = true
+
+					} else {
+						if t.trace {
+							zap.L().Debug((fmt.Sprintf("fail -> %s has no PTR record", q.Name)))
+						}
+					}
+
+				case dns.TypeCNAME:
+					lookup := getCNameRecord(q.Name)
+					if lookup != nil {
+						record := fmt.Sprintf("%s CNAME %s", q.Name, lookup.GetValue())
+
+						if t.trace {
+							zap.L().Debug(fmt.Sprintf("success -> %s, source=%s", record, lookup.SRC))
+						}
+
+						rr, err := dns.NewRR(record)
+
+						if err == nil {
+							m.Answer = append(m.Answer, rr)
+						} else {
+							zap.L().Error(err.Error())
+						}
+
+						local = true
+
+					} else {
+						if t.trace {
+							zap.L().Debug((fmt.Sprintf("fail -> %s has no CNAME record", q.Name)))
+						}
+					}
+
+				}
+			}
+
+		}
+
+		if local {
+			w.WriteMsg(m)
+			return
+		}
+
+		handleRemote(w, r)
 	}
 
 	addDomainName := func(domainName string) {

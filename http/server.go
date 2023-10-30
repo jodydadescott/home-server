@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
+	"strings"
 
 	"go.uber.org/zap"
+
+	"github.com/jodydadescott/home-server/types"
 )
 
-// HTTPRequest ...
+type NetPort = types.NetPort
+
 type HTTPRequest struct {
 	Host   string      `json:"host,omitempty"`
 	Method string      `json:"method,omitempty"`
@@ -19,92 +22,92 @@ type HTTPRequest struct {
 	Header http.Header `json:"header,omitempty"`
 }
 
-// HTTPServer ...
-type HTTPServer struct {
-	s *http.Server
+type Server struct {
+	s              *http.Server
+	recordProvider RecordProvider
 }
 
 // NewServer ...
-func NewServer() *HTTPServer {
-	zap.L().Debug("NewServer()")
-	s := &HTTPServer{}
+func New(config *Config) *Server {
+
+	if config == nil {
+		panic("config is nil")
+	}
+
+	if config.Listener == nil {
+		panic("NetPort is nil")
+	}
+
+	if config.RecordProvider == nil {
+		panic("RecordProvider is required")
+	}
+
+	s := &Server{
+		recordProvider: config.RecordProvider,
+	}
+	s.s = &http.Server{Addr: config.Listener.GetIPColonPort(), Handler: s}
 	return s
 }
 
-// Listen ...
-func (t *HTTPServer) Listen(listen string) error {
-	zap.L().Debug("Listen() / Blocking")
+func (t *Server) Run(ctx context.Context) error {
 
-	if t.s != nil {
-		return fmt.Errorf("Duplicate call to Listen")
-	}
+	go func() {
+		<-ctx.Done()
+		zap.L().Info("Shutting down HTTP server on signal")
+		t.s.Shutdown(ctx)
+	}()
 
-	t.s = &http.Server{Addr: listen, Handler: t}
-
-	err := t.s.ListenAndServe()
-	if err != nil {
-		zap.L().Debug("Listen() no longer blocking and returned error")
-		return err
-	}
-
-	zap.L().Debug("Listen() no longer blocking")
-	return nil
+	zap.L().Info("Starting HTTP Server")
+	return t.s.ListenAndServe()
 }
 
-// Shutdown ...
-func (t *HTTPServer) Shutdown() {
-	zap.L().Debug("Shutdown()")
+func (t *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	if t.s == nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	t.s.Shutdown(ctx)
-}
-
-func pingResponse(r *http.Request) string {
-
-	httpRequest := &HTTPRequest{
-		Host:   r.Host,
-		Method: r.Method,
-		URL:    r.URL,
-		Header: r.Header,
-	}
-
-	b, _ := json.Marshal(httpRequest)
-	return string(b)
-}
-
-// ServeHTTP ...
-func (t *HTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	j := pingResponse(r)
-	zap.L().Debug(fmt.Sprintf("ServeHTTP(http.ResponseWriter, *http.Request=%s)", j))
+	filter := r.URL.Query().Get("filter")
 
 	switch r.URL.Path {
 
-	case "/":
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "<html>")
-		fmt.Fprintf(w, "<h3>Welcome to the test server</h3>")
-		fmt.Fprintf(w, "<a>All operations (GET, POST, PATCH, HEAD, PUT) are supported</p>")
-		fmt.Fprintf(w, "<a href=\"http://"+r.Host+"/\">"+"http://"+r.Host+"/</a> is what you are looking at now</p>")
-		fmt.Fprintf(w, "<a href=\"http://"+r.Host+"/info\">"+"http://"+r.Host+"/info</a> will return a JSON object with details about the request</p>")
-		fmt.Fprintf(w, "<a>All other paths will print the path and operation")
-		fmt.Fprintf(w, "</html>")
-		return
-
-	case "/info":
+	case "/getdevices":
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, j)
+
+		write := func(records *DomainRecords) {
+			j, err := json.Marshal(records)
+			if err != nil {
+				zap.L().Error(err.Error())
+			}
+			fmt.Fprintf(w, string(j))
+		}
+
+		records := t.recordProvider.GetRecords()
+
+		if filter == "" {
+			write(records)
+			return
+		}
+
+		newRecords := &DomainRecords{}
+
+		for _, record := range records.ARecords {
+			if strings.HasPrefix(record.Hostname, filter) {
+				newRecords.AddARecords(record)
+			}
+		}
+
+		for _, record := range records.AAAARecords {
+			if strings.HasPrefix(record.Hostname, filter) {
+				newRecords.AddAAAARecords(record)
+			}
+		}
+
+		write(newRecords)
+
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, "<html>")
-	fmt.Fprintf(w, "<a>Path: "+r.URL.Path+"</p>")
-	fmt.Fprintf(w, "<a>Operation/Method: "+r.Method+"</p>")
-	fmt.Fprintf(w, "</html>")
+
+	fmt.Fprintf(w, "<p>Hello</p>")
+	fmt.Fprintf(w, "<p>You probably want to make one of the following calls</p>")
+	fmt.Fprintf(w, fmt.Sprintf("<p><a href=\"http:/%s/getdevices\">/getdevices?filter=shelly</a></p>", r.Host))
+
 }

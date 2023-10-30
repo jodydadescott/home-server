@@ -147,6 +147,20 @@ type Config struct {
 	Static      *StaticConfig `json:"static,omitempty" yaml:"static,omitempty"`
 	Nameservers []*NetPort    `json:"nameservers,omitempty" yaml:"nameservers,omitempty"`
 	Logging     *Logger       `json:"logging,omitempty" yaml:"logging,omitempty"`
+	HttpConfig  *HttpConfig   `json:"httpConfig,omitempty" yaml:"httpConfig,omitempty"`
+}
+
+// HttpConfig is the config for HTTP servers
+type HttpConfig struct {
+	Listener *NetPort `json:"listener,omitempty" yaml:"listener,omitempty"`
+	Enabled  bool     `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+}
+
+// Clone return copy
+func (t *HttpConfig) Clone() *HttpConfig {
+	c := &HttpConfig{}
+	copier.Copy(&c, &t)
+	return c
 }
 
 // Clone return copy

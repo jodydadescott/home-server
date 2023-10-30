@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/jodydadescott/home-server/dns"
+	"github.com/jodydadescott/home-server/http"
 	"github.com/jodydadescott/home-server/static"
 	"github.com/jodydadescott/home-server/types"
 	"github.com/jodydadescott/home-server/unifi"
@@ -15,7 +16,8 @@ import (
 type Config = types.Config
 
 type Server struct {
-	dns *dns.Server
+	dns  *dns.Server
+	http *http.Server
 }
 
 func New(config *Config) *Server {
@@ -53,11 +55,65 @@ func New(config *Config) *Server {
 		zap.L().Debug("static config is not enabled")
 	}
 
-	return &Server{
+	s := &Server{
 		dns: dns.New(dnsConfig),
 	}
+
+	if config.HttpConfig != nil && config.HttpConfig.Enabled {
+		zap.L().Debug("HTTP Server is enabled")
+
+		httpConfig := &http.Config{
+			Listener:       config.HttpConfig.Listener,
+			RecordProvider: s.dns,
+		}
+
+		s.http = http.New(httpConfig)
+
+	} else {
+		zap.L().Debug("HTTP Server is not enabled")
+	}
+
+	return s
 }
 
 func (t *Server) Run(ctx context.Context) error {
-	return t.dns.Run(ctx)
+
+	errs := make(chan error, 2)
+
+	dnsCtx, dnsCancel := context.WithCancel(ctx)
+	httpCtx, httpCancel := context.WithCancel(ctx)
+
+	defer func() {
+		dnsCancel()
+		httpCancel()
+	}()
+
+	go func() {
+		err := t.dns.Run(dnsCtx)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	if t.http != nil {
+		go func() {
+			err := t.http.Run(httpCtx)
+			if err != nil {
+				errs <- err
+			}
+		}()
+	}
+
+	select {
+
+	case err := <-errs:
+		zap.L().Info("Shutting down or error")
+		return err
+
+	case <-ctx.Done():
+		zap.L().Info("Shutting down or signal")
+
+	}
+
+	return nil
 }

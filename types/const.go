@@ -13,6 +13,7 @@ const (
 	DefaultDnsPort   = 53
 	DefaultDnsDomain = "home"
 	DefaultRefresh   = time.Hour
+	DefaultHTTPPort  = 8080
 )
 
 var space = regexp.MustCompile(`\s+`)

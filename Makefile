@@ -1,5 +1,5 @@
 BUILD_NUMBER := latest
-PROJECT_NAME := home-dns-server
+PROJECT_NAME := home-server
 DOCKER_REGISTRY := jodydadescott
 DOCKER_IMAGE_NAME?=$(PROJECT_NAME)
 DOCKER_IMAGE_TAG?=$(BUILD_NUMBER)
@@ -12,14 +12,14 @@ linux-amd64:
 
 build/linux-amd64:
 	mkdir -p build/linux-amd64
-	env GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/home-dns-server home-dns-server.go
+	env GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/home-server home-server.go
 
 darwin-amd64:
 	@$(MAKE) build/darwin-amd64
 
 build/darwin-amd64:
 	mkdir -p build/darwin-amd64
-	env GOOS=darwin GOARCH=amd64 go build -o build/darwin-amd64/home-dns-server home-dns-server.go
+	env GOOS=darwin GOARCH=amd64 go build -o build/darwin-amd64/home-server home-server.go
 
 linux-amd64-container:
 	$(MAKE) linux-amd64

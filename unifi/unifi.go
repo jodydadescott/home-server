@@ -72,7 +72,6 @@ func (t *Client) GetName() string {
 }
 
 // GetRecords() (*Records, error)
-
 func (t *Client) GetRecords() (*Records, error) {
 
 	clients, err := t.unifiClient.GetClients()
@@ -143,8 +142,6 @@ func (t *Client) GetRecords() (*Records, error) {
 			}
 
 			records.AddPtrRecords(p)
-
-			zap.L().Debug(fmt.Sprintf("Added %s %s %s %s and %s PTR %s", a.SRC, a.GetKey(), a.GetValue(), iptype, p.GetKey(), p.GetValue()))
 		}
 
 		if client.IP != "" {
@@ -205,8 +202,6 @@ func (t *Client) GetRecords() (*Records, error) {
 		}
 
 		records.AddPtrRecords(p)
-
-		zap.L().Debug(fmt.Sprintf("Added %s %s A %s and %s PTR %s", a.SRC, a.GetKey(), a.GetValue(), p.GetKey(), p.GetValue()))
 	}
 
 	devices, err := t.unifiClient.GetDevices()
@@ -254,9 +249,6 @@ func (t *Client) GetRecords() (*Records, error) {
 		}
 
 		records.AddPtrRecords(p)
-
-		zap.L().Debug(fmt.Sprintf("Added %s %s A %s and %s PTR %s", a.SRC, a.GetKey(), a.GetValue(), p.GetKey(), p.GetValue()))
-
 	}
 
 	return records, nil

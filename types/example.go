@@ -45,6 +45,7 @@ func NewExampleConfig() *Config {
 	unifiConfig.Hostname = "https://10.0.1.1"
 	unifiConfig.Username = "homeauto"
 	unifiConfig.Password = "******"
+	unifiConfig.Domain = "home"
 
 	unifiConfig.Enabled = true
 	unifiConfig.Refresh = DefaultRefresh
@@ -89,6 +90,13 @@ func NewExampleConfig() *Config {
 		Port:  4053,
 		Proto: proto.TCP,
 	})
+
+	c.HttpConfig = &HttpConfig{
+		Enabled: true,
+		Listener: &NetPort{
+			Port: 8080,
+		},
+	}
 
 	return c
 }

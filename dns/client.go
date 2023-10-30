@@ -97,7 +97,6 @@ func (t *Client) run() error {
 				return
 
 			case <-t.ticker.ticker.C:
-				zap.L().Info("TICK")
 				tick()
 
 			}
@@ -119,6 +118,34 @@ func (t *Client) shutdown() {
 		t.done <- true
 	}
 
+}
+
+func (t *Client) getARecords() []*ARecord {
+
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	var records []*ARecord
+
+	for _, record := range t.aRecords {
+		records = append(records, record)
+	}
+
+	return records
+}
+
+func (t *Client) getAAAARecords() []*ARecord {
+
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	var records []*ARecord
+
+	for _, record := range t.aaaaRecords {
+		records = append(records, record)
+	}
+
+	return records
 }
 
 func (t *Client) getARecord(name string) *ARecord {

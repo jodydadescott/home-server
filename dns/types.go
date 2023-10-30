@@ -14,7 +14,7 @@ type Domain = types.Domain
 type ARecord = types.ARecord
 type PTRrecord = types.PTRrecord
 type CNameRecord = types.CNameRecord
-type Records = types.DomainRecords
+type DomainRecords = types.DomainRecords
 
 type Config struct {
 	Providers   []Provider
@@ -37,6 +37,6 @@ func (t *Config) AddProvider(provider Provider) {
 type Provider interface {
 	GetName() string
 	GetDomainName() string
-	GetRecords() (*Records, error)
+	GetRecords() (*DomainRecords, error)
 	GetRefreshDuration() time.Duration
 }
