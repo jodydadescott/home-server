@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	CodeVersion  = "1.0.2"
 	DefaultDomain    = "home"
 	DefaultDnsProto  = proto.UDP
 	DefaultDnsPort   = 53

@@ -8,9 +8,6 @@ default:
 	@echo "Make what? linux-amd64 linux-amd64-container darwin-amd64"
 
 linux-amd64:
-	@$(MAKE) build/linux-amd64
-
-build/linux-amd64:
 	mkdir -p build/linux-amd64
 	env GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/home-server home-server.go
 

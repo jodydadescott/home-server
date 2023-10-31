@@ -21,7 +21,6 @@ import (
 
 const (
 	BinaryName   = "home-server"
-	CodeVersion  = "1.0.2"
 	DebugEnvVar  = "DEBUG"
 	ConfigEnvVar = "CONFIG"
 )
@@ -70,7 +69,7 @@ var (
 	versionCmd = &cobra.Command{
 		Use: "version",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println(CodeVersion)
+			fmt.Println(types.CodeVersion)
 			return nil
 		},
 	}
